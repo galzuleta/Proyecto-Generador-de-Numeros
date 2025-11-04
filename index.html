@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador Congruencial Lineal (LCG)</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <!-- Fondo animado -->
+  <div class="background-animation">
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+  </div>
+
+  <div class="container">
+    <header>
+      <h1>Generador Congruencial Lineal (LCG)</h1>
+      <p class="formula">
+        Fórmulas utilizadas:<br>
+        <strong>Xₖ₊₁ = (a × Xₖ + c) mod m</strong><br>
+        <strong>uₖ = Xₖ / (m - 1)</strong>
+      </p>
+    </header>
+
+    <main>
+      <section class="input-section">
+        <form id="formLCG">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="a">Multiplicador (a):</label>
+              <input type="number" id="a"  required>
+              <span class="help-text">Entero positivo</span>
+            </div>
+
+            <div class="form-group">
+              <label for="c">Incremento (c):</label>
+              <input type="number" id="c"  required>
+              <span class="help-text">Entero no negativo</span>
+            </div>
+
+            <div class="form-group">
+              <label for="m">Módulo (m):</label>
+              <input type="number" id="m"  required>
+              <span class="help-text">Entero > 1</span>
+            </div>
+
+            <div class="form-group">
+              <label for="x0">Semilla (X₀):</label>
+              <input type="number" id="x0" required>
+              <span class="help-text">0 ≤ X₀ < m</span>
+            </div>
+
+            <div class="form-group full-width">
+              <label for="n">Cantidad de números:</label>
+              <input type="number" id="n"required min="1">
+              <span class="help-text">Entero positivo</span>
+            </div>
+          </div>
+
+          <div id="mensajes" class="mensajes"></div>
+
+          <div class="botones">
+            <button type="button" id="generarBtn" onclick="generarLCG()">
+              <span class="btn-icon">⚡</span> Generar Números
+            </button>
+            <button type="button" id="reiniciarBtn" onclick="reiniciar()" class="btn-secondary">
+              <span class="btn-icon">🔄</span> Reiniciar Todo
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section id="outputSection" class="output-section hidden">
+        <div class="stats-bar">
+          <div class="stat-item">
+            <span class="stat-label">Números generados:</span>
+            <span id="totalNumbers" class="stat-value">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Período estimado:</span>
+            <span id="periodoLength" class="stat-value">-</span>
+          </div>
+        </div>
+        <div id="output" class="table-container"></div>
+      </section>
+
+      <section id="chartSection" class="chart-section hidden">
+        <h2>📈 Distribución de Números Aleatorios</h2>
+        <div class="chart-container">
+          <canvas id="chart"></canvas>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Generador LCG - Algoritmo de números pseudoaleatorios | Universidad</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
