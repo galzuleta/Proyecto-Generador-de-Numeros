@@ -4,27 +4,52 @@ let chart = null;
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Aplicación LCG iniciada');
     
+    // Configurar campo m como solo lectura y cambiar texto de ayuda
+    const mInput = document.getElementById("m");
+    const mHelpText = document.querySelector('.form-group:nth-child(3) .help-text');
+    
+    if (mInput) {
+        mInput.readOnly = true;
+        mInput.style.backgroundColor = '#f8f9fa';
+        mInput.style.cursor = 'not-allowed';
+        mInput.style.color = '#6c757d';
+        mInput.placeholder = "Calculado automáticamente desde N";
+    }
+    
+    if (mHelpText) {
+        mHelpText.textContent = "Calculado automáticamente como 2^g ≥ N";
+        mHelpText.style.color = '#4361ee';
+        mHelpText.style.fontWeight = 'bold';
+    }
+    
     // Establecer valores por defecto al cargar
     reiniciarValores();
     
     // Agregar validación en tiempo real para evitar decimales
     document.querySelectorAll('#formLCG input').forEach(input => {
-        input.addEventListener('input', function(e) {
-            // Prevenir decimales
-            if (this.value.includes('.')) {
-                this.value = this.value.split('.')[0];
-            }
-            validarCampoEnTiempoReal(e);
-        });
-        
-        // Prevenir pegado de decimales
-        input.addEventListener('paste', function(e) {
-            const pastedData = e.clipboardData.getData('text');
-            if (pastedData.includes('.')) {
-                e.preventDefault();
-                this.value = pastedData.split('.')[0];
-            }
-        });
+        if (input.id !== 'm') { // No validar m ya que es solo lectura
+            input.addEventListener('input', function(e) {
+                // Prevenir decimales
+                if (this.value.includes('.')) {
+                    this.value = this.value.split('.')[0];
+                }
+                validarCampoEnTiempoReal(e);
+                
+                // Si es el campo n, actualizar m automáticamente
+                if (this.id === 'n') {
+                    actualizarModuloDesdeN();
+                }
+            });
+            
+            // Prevenir pegado de decimales
+            input.addEventListener('paste', function(e) {
+                const pastedData = e.clipboardData.getData('text');
+                if (pastedData.includes('.')) {
+                    e.preventDefault();
+                    this.value = pastedData.split('.')[0];
+                }
+            });
+        }
     });
     
     // Soporte para Enter
@@ -36,24 +61,71 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+function actualizarModuloDesdeN() {
+    const nInput = document.getElementById("n");
+    const mDisplay = document.getElementById("m");
+    
+    if (!nInput || !mDisplay) return;
+    
+    const n = parseInt(nInput.value);
+    
+    if (!isNaN(n) && n > 0) {
+        // Calcular m = 2^g donde g es el menor entero tal que 2^g >= n
+        let g = Math.ceil(Math.log2(n));
+        let m = Math.pow(2, g);
+        
+        // Asegurarse de que m sea al menos 16 (mínimo razonable)
+        m = Math.max(m, 16);
+        
+        mDisplay.value = m;
+        
+        // Actualizar el título para mostrar la relación
+        const mLabel = document.querySelector('label[for="m"]');
+        if (mLabel) {
+            mLabel.innerHTML = `Módulo (m = 2<sup>${g}</sup>):`;
+        }
+        
+        console.log(`📊 N=${n} → m=2^${g}=${m}`);
+    }
+}
+
 function reiniciarValores() {
     console.log('🔄 Restableciendo valores por defecto');
     
-    // Restablecer valores por defecto
-    document.getElementById("a").value = defaultValues.a;
-    document.getElementById("c").value = defaultValues.c;
-    document.getElementById("m").value = defaultValues.m;
-    document.getElementById("x0").value = defaultValues.x0;
-    document.getElementById("n").value = defaultValues.n;
-    
-    // Limpiar estilos de validación
-    document.querySelectorAll('#formLCG input').forEach(input => {
-        input.style.borderColor = '';
-    });
+    try {
+        // Restablecer valores por defecto de forma segura
+        const aInput = document.getElementById("a");
+        const cInput = document.getElementById("c");
+        const mInput = document.getElementById("m");
+        const x0Input = document.getElementById("x0");
+        const nInput = document.getElementById("n");
+        
+        // Verificar que los elementos existen antes de asignar valores
+        if (aInput) aInput.value = defaultValues.a;
+        if (cInput) cInput.value = defaultValues.c;
+        if (x0Input) x0Input.value = defaultValues.x0;
+        if (nInput) nInput.value = defaultValues.n;
+        
+        // Calcular m automáticamente desde n
+        actualizarModuloDesdeN();
+        
+        // Limpiar estilos de validación
+        document.querySelectorAll('#formLCG input').forEach(input => {
+            if (input && input.id !== 'm') {
+                input.style.borderColor = '';
+            }
+        });
+        
+        console.log('✅ Valores restablecidos correctamente');
+    } catch (error) {
+        console.error('❌ Error en reiniciarValores:', error);
+    }
 }
 
 function validarCampoEnTiempoReal(e) {
     const input = e.target;
+    if (!input || input.id === 'm') return; // No validar m
+    
     const value = input.value;
     
     if (value === '' || value === '-') {
@@ -64,33 +136,33 @@ function validarCampoEnTiempoReal(e) {
     const numero = parseInt(value);
     
     if (isNaN(numero)) {
-        input.style.borderColor = 'var(--danger)';
+        input.style.borderColor = '#e63946';
         return false;
     }
     
     if (validarCampoEspecifico(input.id, numero)) {
-        input.style.borderColor = 'var(--success)';
+        input.style.borderColor = '#4cc9f0';
     } else {
-        input.style.borderColor = 'var(--danger)';
+        input.style.borderColor = '#e63946';
     }
     
     return true;
 }
 
 function validarCampoEspecifico(id, valor) {
-    const m = parseInt(document.getElementById('m').value) || 0;
+    const mInput = document.getElementById('m');
+    const m = mInput ? parseInt(mInput.value) || 0 : 0;
     
     switch(id) {
         case 'a':
             return valor > 0;
         case 'c':
             return valor >= 0;
-        case 'm':
-            return valor > 1;
         case 'x0':
             return !isNaN(m) && valor >= 0 && valor < m;
         case 'n':
-            return valor > 0;
+            // Mínimo 99 números
+            return valor >= 99;
         default:
             return true;
     }
@@ -98,6 +170,8 @@ function validarCampoEspecifico(id, valor) {
 
 function mostrarMensaje(mensaje, tipo = 'error') {
     const mensajesDiv = document.getElementById('mensajes');
+    if (!mensajesDiv) return;
+    
     mensajesDiv.textContent = mensaje;
     mensajesDiv.className = `mensajes ${tipo}`;
     mensajesDiv.style.display = 'block';
@@ -105,11 +179,15 @@ function mostrarMensaje(mensaje, tipo = 'error') {
 
 function ocultarMensaje() {
     const mensajesDiv = document.getElementById('mensajes');
-    mensajesDiv.style.display = 'none';
+    if (mensajesDiv) {
+        mensajesDiv.style.display = 'none';
+    }
 }
 
 function mostrarLoading(mostrar) {
     const generarBtn = document.getElementById('generarBtn');
+    if (!generarBtn) return;
+    
     if (mostrar) {
         generarBtn.innerHTML = '<span class="btn-icon">⏳</span> Generando...';
         generarBtn.disabled = true;
@@ -122,12 +200,24 @@ function mostrarLoading(mostrar) {
 function generarLCG() {
     console.log('🎲 Iniciando generación LCG');
     
+    // Obtener elementos de forma segura
+    const aInput = document.getElementById("a");
+    const cInput = document.getElementById("c");
+    const mInput = document.getElementById("m");
+    const x0Input = document.getElementById("x0");
+    const nInput = document.getElementById("n");
+    
+    if (!aInput || !cInput || !mInput || !x0Input || !nInput) {
+        mostrarMensaje("❌ Error: No se pudieron encontrar los campos del formulario", "error");
+        return;
+    }
+    
     // Obtener valores y asegurarse de que sean enteros
-    const a = parseInt(document.getElementById("a").value);
-    const c = parseInt(document.getElementById("c").value);
-    const m = parseInt(document.getElementById("m").value);
-    const x0 = parseInt(document.getElementById("x0").value);
-    const n = parseInt(document.getElementById("n").value);
+    const a = parseInt(aInput.value);
+    const c = parseInt(cInput.value);
+    const m = parseInt(mInput.value);
+    const x0 = parseInt(x0Input.value);
+    const n = parseInt(nInput.value);
 
     // 🔍 Validaciones - Solo enteros
     if ([a, c, m, x0, n].some(v => isNaN(v))) {
@@ -156,15 +246,21 @@ function generarLCG() {
         return;
     }
 
-    if (n <= 0) {
-        mostrarMensaje("⚠️ La cantidad de números debe ser mayor que 0.", "error");
+    // 🔥 VALIDACIÓN: Mínimo 99 números
+    if (n < 99) {
+        mostrarMensaje("⚠️ La cantidad de números debe ser al menos 99.", "error");
         return;
     }
 
-    if (n >= 100) {
-        const confirmar = confirm("⚠️ Vas a generar más de 100 números. ¿Deseas continuar?");
+    // Confirmación para números grandes (más de 1000)
+    if (n > 1000) {
+        const confirmar = confirm(`⚠️ Vas a generar ${n} números. Esto puede tomar unos segundos. ¿Deseas continuar?`);
         if (!confirmar) return;
     }
+
+    // Mostrar información del módulo calculado
+    const g = Math.log2(m);
+    console.log(`📐 Parámetros: N=${n}, m=2^${g.toFixed(2)}=${m}`);
 
     // Mostrar estado de carga
     mostrarLoading(true);
@@ -185,11 +281,12 @@ function generarLCG() {
             // Calcular período
             const periodo = calcularPeriodo(a, c, m, x0);
 
-            mostrarResultados(resultados, periodo);
+            mostrarResultados(resultados, periodo, m);
             graficar(resultados);
             
-            // Mostrar mensaje de éxito
-            mostrarMensaje(`✅ Se generaron ${n} números aleatorios correctamente`, "success");
+            // Mostrar mensaje de éxito con información del módulo
+            const g = Math.log2(m);
+            mostrarMensaje(`✅ Se generaron ${n} números usando m=2^${Math.round(g)}=${m}`, "success");
             
         } catch (error) {
             console.error('Error en generación LCG:', error);
@@ -216,10 +313,15 @@ function calcularPeriodo(a, c, m, x0) {
     return valoresVistos.size;
 }
 
-function mostrarResultados(resultados, periodo) {
+function mostrarResultados(resultados, periodo, m) {
     const contenedor = document.getElementById("output");
     const outputSection = document.getElementById("outputSection");
     const chartSection = document.getElementById("chartSection");
+
+    if (!contenedor || !outputSection || !chartSection) {
+        console.error('❌ No se encontraron elementos de resultados');
+        return;
+    }
 
     if (resultados.length === 0) {
         contenedor.innerHTML = "<p style='text-align: center; color: #6c757d; padding: 2rem;'>No se han generado números.</p>";
@@ -232,12 +334,29 @@ function mostrarResultados(resultados, periodo) {
     outputSection.classList.remove('hidden');
     chartSection.classList.remove('hidden');
 
-    // Actualizar estadísticas
-    document.getElementById('totalNumbers').textContent = resultados.length;
-    document.getElementById('periodoLength').textContent = periodo;
+    // Actualizar estadísticas de forma segura
+    const totalNumbers = document.getElementById('totalNumbers');
+    const periodoLength = document.getElementById('periodoLength');
+    
+    if (totalNumbers) totalNumbers.textContent = resultados.length;
+    if (periodoLength) periodoLength.textContent = periodo;
 
-    // Generar tabla
+    // Mostrar información del módulo usado
+    const g = Math.log2(m);
+    const moduloInfo = document.createElement('div');
+    moduloInfo.className = 'modulo-info';
+    moduloInfo.innerHTML = `
+        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; border-left: 4px solid #4361ee;">
+            <strong>📐 Configuración Automática:</strong><br>
+            <span style="font-size: 1.1em;">N = ${resultados.length} → m = 2<sup>${Math.round(g)}</sup> = ${m}</span>
+        </div>
+    `;
+
+    // Generar tabla con scroll para muchos números
     let html = `
+        <div class="table-info">
+            <p>Mostrando ${resultados.length} números generados</p>
+        </div>
         <table>
             <thead>
                 <tr>
@@ -260,16 +379,30 @@ function mostrarResultados(resultados, periodo) {
     });
     
     html += "</tbody></table>";
-    contenedor.innerHTML = html;
+    
+    // Insertar primero la información del módulo
+    contenedor.innerHTML = '';
+    contenedor.appendChild(moduloInfo);
+    contenedor.innerHTML += html;
 }
 
 function graficar(resultados) {
-    const ctx = document.getElementById("chart").getContext("2d");
+    const chartCanvas = document.getElementById("chart");
+    if (!chartCanvas) {
+        console.error('❌ No se encontró el elemento canvas del gráfico');
+        return;
+    }
+    
+    const ctx = chartCanvas.getContext("2d");
     
     // Destruir gráfico anterior si existe
     if (chart) {
         chart.destroy();
     }
+
+    // Ajustar tamaño de puntos según cantidad de datos
+    const pointRadius = resultados.length > 200 ? 2 : resultados.length > 100 ? 3 : 4;
+    const hoverRadius = resultados.length > 200 ? 4 : resultados.length > 100 ? 5 : 6;
 
     // Configuración responsive del gráfico
     const responsiveConfig = {
@@ -355,8 +488,8 @@ function graficar(resultados) {
         },
         elements: {
             point: {
-                radius: resultados.length > 50 ? 3 : 5,
-                hoverRadius: resultados.length > 50 ? 5 : 8
+                radius: pointRadius,
+                hoverRadius: hoverRadius
             }
         }
     };
@@ -370,8 +503,8 @@ function graficar(resultados) {
                 backgroundColor: "#4361ee",
                 borderColor: "#3a56d4",
                 borderWidth: 1,
-                pointRadius: resultados.length > 50 ? 3 : 5,
-                pointHoverRadius: resultados.length > 50 ? 5 : 8
+                pointRadius: pointRadius,
+                pointHoverRadius: hoverRadius
             }]
         },
         options: responsiveConfig
@@ -386,10 +519,9 @@ function graficar(resultados) {
 }
 
 function reiniciar() {
-  document.getElementById("formLCG").reset();
-  document.getElementById("output").innerHTML = "";
-
-  // Ocultar secciones de resultados de forma segura
+    console.log('🔄 Reiniciando aplicación');
+    
+    try {
         const outputSection = document.getElementById('outputSection');
         const chartSection = document.getElementById('chartSection');
         const output = document.getElementById('output');
@@ -397,19 +529,22 @@ function reiniciar() {
         if (outputSection) outputSection.classList.add('hidden');
         if (chartSection) chartSection.classList.add('hidden');
         if (output) output.innerHTML = '';
-
-   if (chart) {
+        
+        // Destruir gráfico si existe
+        if (chart) {
             chart.destroy();
             chart = null;
         }
         
         // Mostrar mensaje de reinicio
-    mostrarMensaje("🔄 Formulario reiniciado correctamente", "success");
-    setTimeout(ocultarMensaje, 2000);
+        mostrarMensaje("🔄 Formulario reiniciado correctamente", "success");
+        
+        // Ocultar mensaje después de 2 segundos
+        setTimeout(ocultarMensaje, 2000);
+        
+        console.log('✅ Aplicación reiniciada correctamente');
+    } catch (error) {
+        console.error('❌ Error en reiniciar:', error);
+        mostrarMensaje("❌ Error al reiniciar la aplicación", "error");
+    }
 }
-
-
-
-
-
-    

@@ -729,3 +729,32 @@ footer {
   text-align: center;
   margin-bottom: 10px;
 }
+
+/* Estilos para el campo módulo (solo lectura) */
+input[readonly] {
+    background-color: #f8f9fa !important;
+    color: #6c757d !important;
+    cursor: not-allowed !important;
+    border-color: #dee2e6 !important;
+}
+
+input[readonly]:focus {
+    border-color: #dee2e6 !important;
+    box-shadow: none !important;
+}
+
+/* Estilos para la información del módulo calculado */
+.modulo-info {
+    margin-bottom: 1rem;
+}
+
+.modulo-info div {
+    border-left: 4px solid #4361ee;
+}
+
+/* Mejorar el texto de ayuda del módulo */
+.form-group:nth-child(3) .help-text {
+    color: #4361ee !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+}
