@@ -31,20 +31,20 @@
           <div class="form-grid">
             <div class="form-group">
               <label for="a">Multiplicador (a):</label>
-              <input type="number" id="a"  required>
+              <input type="number" id="a" required>
               <span class="help-text">Entero positivo</span>
             </div>
 
             <div class="form-group">
               <label for="c">Incremento (c):</label>
-              <input type="number" id="c"  required>
+              <input type="number" id="c" required>
               <span class="help-text">Entero no negativo</span>
             </div>
 
             <div class="form-group">
               <label for="m">Módulo (m):</label>
-              <input type="number" id="m"  required>
-              <span class="help-text">Entero > 1</span>
+              <input type="number" id="m" required>
+              <span class="help-text">Calculado automáticamente como 2^g ≥ N</span>
             </div>
 
             <div class="form-group">
@@ -55,7 +55,7 @@
 
             <div class="form-group full-width">
               <label for="n">Cantidad de números (n):</label>
-              <input type="number" id="n"required min="1">
+              <input type="number" id="n" required min="1">
               <span class="help-text">Entero positivo</span>
             </div>
           </div>
@@ -85,6 +85,103 @@
           </div>
         </div>
         <div id="output" class="table-container"></div>
+      </section>
+
+      <!-- NUEVA SECCIÓN: Pruebas de Validación -->
+      <section id="validationSection" class="validation-section hidden">
+          <h2>🧪 Pruebas de Validación</h2>
+          
+          <div class="validation-results">
+              <!-- Prueba de Uniformidad - Media -->
+              <div class="validation-item">
+                  <div class="validation-header">
+                      <h3>📊 Prueba de Uniformidad - Media</h3>
+                      <span id="mediaStatus" class="validation-status">Pendiente</span>
+                  </div>
+                  <p id="mediaDescription" class="validation-description">
+                      Verifica que la media de los números esté dentro del intervalo de confianza esperado.
+                  </p>
+                  <div class="validation-details">
+                      <div class="validation-metric">
+                          <span class="metric-label">Valor calculado:</span>
+                          <span id="mediaValor" class="metric-value">-</span>
+                      </div>
+                      <div class="validation-metric">
+                          <span class="metric-label">Límite inferior:</span>
+                          <span id="mediaLimiteInf" class="metric-value">-</span>
+                      </div>
+                      <div class="validation-metric">
+                          <span class="metric-label">Límite superior:</span>
+                          <span id="mediaLimiteSup" class="metric-value">-</span>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Prueba de Uniformidad - Varianza -->
+              <div class="validation-item">
+                  <div class="validation-header">
+                      <h3>📈 Prueba de Uniformidad - Varianza</h3>
+                      <span id="varianzaStatus" class="validation-status">Pendiente</span>
+                  </div>
+                  <p id="varianzaDescription" class="validation-description">
+                      Verifica que la varianza de los números esté dentro del intervalo de confianza esperado.
+                  </p>
+                  <div class="validation-details">
+                      <div class="validation-metric">
+                          <span class="metric-label">Valor calculado:</span>
+                          <span id="varianzaValor" class="metric-value">-</span>
+                      </div>
+                      <div class="validation-metric">
+                          <span class="metric-label">Límite inferior:</span>
+                          <span id="varanzaLimiteInf" class="metric-value">-</span>
+                      </div>
+                      <div class="validation-metric">
+                          <span class="metric-label">Límite superior:</span>
+                          <span id="varanzaLimiteSup" class="metric-value">-</span>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Prueba de Independencia - Correlación -->
+              <div class="validation-item">
+                  <div class="validation-header">
+                      <h3>🔗 Prueba de Independencia - Correlación</h3>
+                      <span id="correlacionStatus" class="validation-status">Pendiente</span>
+                  </div>
+                  <p id="correlacionDescription" class="validation-description">
+                      Verifica que no exista correlación significativa entre números consecutivos.
+                  </p>
+                  <div class="validation-details">
+                      <div class="validation-metric">
+                          <span class="metric-label">Valor calculado:</span>
+                          <span id="correlacionValor" class="metric-value">-</span>
+                      </div>
+                      <div class="validation-metric">
+                          <span class="metric-label">Límite inferior:</span>
+                          <span id="correlacionLimiteInf" class="metric-value">-</span>
+                      </div>
+                      <div class="validation-metric">
+                          <span class="metric-label">Límite superior:</span>
+                          <span id="correlacionLimiteSup" class="metric-value">-</span>
+                      </div>
+                  </div>
+              </div>
+
+              <div class="validation-summary">
+                  <div class="summary-header">
+                      <h3>Resultado General</h3>
+                      <span id="overallStatus" class="overall-status">Pendiente</span>
+                  </div>
+                  <p id="overallDescription" class="summary-description">
+                      Los números generados aún no han sido validados.
+                  </p>
+                  <div class="validation-actions">
+                      <button type="button" id="regenerarBtn" onclick="regenerarNumeros()" class="btn-secondary hidden">
+                          <span class="btn-icon">🔄</span> Regenerar Números
+                      </button>
+                  </div>
+              </div>
+          </div>
       </section>
 
       <section id="chartSection" class="chart-section hidden">

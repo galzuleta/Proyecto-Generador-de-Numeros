@@ -1,4 +1,7 @@
 let chart = null;
+let currentResults = [];
+let currentParams = {};
+
 
 // Inicializar la aplicación
 document.addEventListener('DOMContentLoaded', function() {
@@ -262,6 +265,9 @@ function generarLCG() {
     const g = Math.log2(m);
     console.log(`📐 Parámetros: N=${n}, m=2^${g.toFixed(2)}=${m}`);
 
+    // Guardar parámetros actuales para regeneración
+    currentParams = { a, c, m, x0, n };
+
     // Mostrar estado de carga
     mostrarLoading(true);
 
@@ -278,11 +284,17 @@ function generarLCG() {
                 resultados.push({ index: i + 1, X: x, U: u.toFixed(4) });
             }
 
+            // Guardar resultados actuales
+            currentResults = resultados;
+
             // Calcular período
             const periodo = calcularPeriodo(a, c, m, x0);
 
             mostrarResultados(resultados, periodo, m);
             graficar(resultados);
+            
+            // Ejecutar pruebas de validación
+            ejecutarPruebasValidacion(resultados);
             
             // Mostrar mensaje de éxito con información del módulo
             const g = Math.log2(m);
@@ -317,8 +329,9 @@ function mostrarResultados(resultados, periodo, m) {
     const contenedor = document.getElementById("output");
     const outputSection = document.getElementById("outputSection");
     const chartSection = document.getElementById("chartSection");
+    const validationSection = document.getElementById("validationSection");
 
-    if (!contenedor || !outputSection || !chartSection) {
+    if (!contenedor || !outputSection || !chartSection || !validationSection) {
         console.error('❌ No se encontraron elementos de resultados');
         return;
     }
@@ -327,12 +340,14 @@ function mostrarResultados(resultados, periodo, m) {
         contenedor.innerHTML = "<p style='text-align: center; color: #6c757d; padding: 2rem;'>No se han generado números.</p>";
         outputSection.classList.add('hidden');
         chartSection.classList.add('hidden');
+        validationSection.classList.add('hidden');
         return;
     }
 
     // Mostrar secciones
     outputSection.classList.remove('hidden');
     chartSection.classList.remove('hidden');
+    validationSection.classList.remove('hidden');
 
     // Actualizar estadísticas de forma segura
     const totalNumbers = document.getElementById('totalNumbers');
@@ -518,17 +533,238 @@ function graficar(resultados) {
     }, 100);
 }
 
+// ===== PRUEBAS DE VALIDACIÓN ESPECÍFICAS =====
+
+function ejecutarPruebasValidacion(resultados) {
+    console.log('🧪 Ejecutando pruebas de validación específicas');
+    
+    // Obtener solo los valores U (números aleatorios)
+    const valoresU = resultados.map(r => parseFloat(r.U));
+    const n = valoresU.length;
+    
+    // Ejecutar pruebas específicas
+    const pruebaMedia = pruebaUniformidadMedia(valoresU, n);
+    const pruebaVarianza = pruebaUniformidadVarianza(valoresU, n);
+    const pruebaCorrelacion = pruebaIndependenciaCorrelacion(valoresU, n);
+    
+    // Mostrar resultados
+    mostrarResultadosValidacionEspecificos(pruebaMedia, pruebaVarianza, pruebaCorrelacion);
+}
+
+function pruebaUniformidadMedia(valoresU, n) {
+    // Calcular media
+    const media = valoresU.reduce((sum, val) => sum + val, 0) / n;
+    
+    // Límites para la media con α=0.05
+    // Para una distribución uniforme U(0,1), la media teórica es 0.5
+    // El intervalo de confianza al 95% es: 0.5 ± Z_(1-α/2) * σ/√n
+    const z = 1.96; // Valor Z para α=0.05
+    const sigma = 1 / Math.sqrt(12); // Desviación estándar teórica de U(0,1)
+    const margenError = z * sigma / Math.sqrt(n);
+    
+    const limiteInferior = 0.5 - margenError;
+    const limiteSuperior = 0.5 + margenError;
+    
+    const esValido = media >= limiteInferior && media <= limiteSuperior;
+    
+    return {
+        nombre: "Uniformidad - Media",
+        valorCalculado: media,
+        limiteInferior: limiteInferior,
+        limiteSuperior: limiteSuperior,
+        esValido: esValido
+    };
+}
+
+function pruebaUniformidadVarianza(valoresU, n) {
+    // Calcular varianza muestral
+    const media = valoresU.reduce((sum, val) => sum + val, 0) / n;
+    const varianza = valoresU.reduce((sum, val) => sum + Math.pow(val - media, 2), 0) / (n - 1);
+    
+    // Límites para la varianza con α=0.05
+    // Para una distribución uniforme U(0,1), la varianza teórica es 1/12 ≈ 0.08333
+    // Usamos distribución chi-cuadrado para el intervalo de confianza
+    const varianzaTeorica = 1/12;
+    const chi2Inferior = 77.046; // χ²(0.025, n-1) para n=100
+    const chi2Superior = 123.225; // χ²(0.975, n-1) para n=100
+    
+    const limiteInferior = (n - 1) * varianzaTeorica / chi2Superior;
+    const limiteSuperior = (n - 1) * varianzaTeorica / chi2Inferior;
+    
+    const esValido = varianza >= limiteInferior && varianza <= limiteSuperior;
+    
+    return {
+        nombre: "Uniformidad - Varianza",
+        valorCalculado: varianza,
+        limiteInferior: limiteInferior,
+        limiteSuperior: limiteSuperior,
+        esValido: esValido
+    };
+}
+
+function pruebaIndependenciaCorrelacion(valoresU, n) {
+    // Prueba de correlación serial (lag-1)
+    let sumaProductos = 0;
+    
+    for (let i = 0; i < n - 1; i++) {
+        sumaProductos += valoresU[i] * valoresU[i + 1];
+    }
+    
+    // Calcular coeficiente de correlación
+    const media = valoresU.reduce((sum, val) => sum + val, 0) / n;
+    const varianza = valoresU.reduce((sum, val) => sum + Math.pow(val - media, 2), 0) / (n - 1);
+    
+    const covarianza = (sumaProductos / (n - 1)) - Math.pow(media, 2);
+    const correlacion = covarianza / varianza;
+    
+    // Límites para correlación con α=0.05
+    // Bajo independencia, el coeficiente de correlación debería estar cerca de 0
+    const z = 1.96; // Valor Z para α=0.05
+    const limite = z / Math.sqrt(n);
+    
+    const limiteInferior = -limite;
+    const limiteSuperior = limite;
+    
+    const esValido = correlacion >= limiteInferior && correlacion <= limiteSuperior;
+    
+    return {
+        nombre: "Independencia - Correlación",
+        valorCalculado: correlacion,
+        limiteInferior: limiteInferior,
+        limiteSuperior: limiteSuperior,
+        esValido: esValido
+    };
+}
+
+function mostrarResultadosValidacionEspecificos(pruebaMedia, pruebaVarianza, pruebaCorrelacion) {
+    // Actualizar prueba de media
+    const mediaStatus = document.getElementById('mediaStatus');
+    const mediaDescription = document.getElementById('mediaDescription');
+    const mediaValor = document.getElementById('mediaValor');
+    const mediaLimiteInf = document.getElementById('mediaLimiteInf');
+    const mediaLimiteSup = document.getElementById('mediaLimiteSup');
+    
+    if (mediaStatus) {
+        mediaStatus.textContent = pruebaMedia.esValido ? "✅ APRUEBA" : "❌ NO APRUEBA";
+        mediaStatus.className = `validation-status ${pruebaMedia.esValido ? 'pass' : 'fail'}`;
+    }
+    
+    if (mediaDescription) {
+        mediaDescription.textContent = pruebaMedia.esValido 
+            ? "La media está dentro del intervalo de confianza esperado."
+            : "La media está fuera del intervalo de confianza esperado.";
+    }
+    
+    if (mediaValor) mediaValor.textContent = pruebaMedia.valorCalculado.toFixed(4);
+    if (mediaLimiteInf) mediaLimiteInf.textContent = pruebaMedia.limiteInferior.toFixed(4);
+    if (mediaLimiteSup) mediaLimiteSup.textContent = pruebaMedia.limiteSuperior.toFixed(4);
+    
+    // Actualizar prueba de varianza
+    const varianzaStatus = document.getElementById('varianzaStatus');
+    const varianzaDescription = document.getElementById('varianzaDescription');
+    const varianzaValor = document.getElementById('varianzaValor');
+    const varanzaLimiteInf = document.getElementById('varanzaLimiteInf');
+    const varanzaLimiteSup = document.getElementById('varanzaLimiteSup');
+    
+    if (varianzaStatus) {
+        varianzaStatus.textContent = pruebaVarianza.esValido ? "✅ APRUEBA" : "❌ NO APRUEBA";
+        varianzaStatus.className = `validation-status ${pruebaVarianza.esValido ? 'pass' : 'fail'}`;
+    }
+    
+    if (varianzaDescription) {
+        varianzaDescription.textContent = pruebaVarianza.esValido
+            ? "La varianza está dentro del intervalo de confianza esperado."
+            : "La varianza está fuera del intervalo de confianza esperado.";
+    }
+    
+    if (varianzaValor) varianzaValor.textContent = pruebaVarianza.valorCalculado.toFixed(4);
+    if (varanzaLimiteInf) varanzaLimiteInf.textContent = pruebaVarianza.limiteInferior.toFixed(4);
+    if (varanzaLimiteSup) varanzaLimiteSup.textContent = pruebaVarianza.limiteSuperior.toFixed(4);
+    
+    // Actualizar prueba de correlación
+    const correlacionStatus = document.getElementById('correlacionStatus');
+    const correlacionDescription = document.getElementById('correlacionDescription');
+    const correlacionValor = document.getElementById('correlacionValor');
+    const correlacionLimiteInf = document.getElementById('correlacionLimiteInf');
+    const correlacionLimiteSup = document.getElementById('correlacionLimiteSup');
+    
+    if (correlacionStatus) {
+        correlacionStatus.textContent = pruebaCorrelacion.esValido ? "✅ APRUEBA" : "❌ NO APRUEBA";
+        correlacionStatus.className = `validation-status ${pruebaCorrelacion.esValido ? 'pass' : 'fail'}`;
+    }
+    
+    if (correlacionDescription) {
+        correlacionDescription.textContent = pruebaCorrelacion.esValido
+            ? "La correlación está dentro del intervalo de confianza esperado."
+            : "La correlación está fuera del intervalo de confianza esperado.";
+    }
+    
+    if (correlacionValor) correlacionValor.textContent = pruebaCorrelacion.valorCalculado.toFixed(4);
+    if (correlacionLimiteInf) correlacionLimiteInf.textContent = pruebaCorrelacion.limiteInferior.toFixed(4);
+    if (correlacionLimiteSup) correlacionLimiteSup.textContent = pruebaCorrelacion.limiteSuperior.toFixed(4);
+    
+    // Actualizar estado general
+    const overallStatus = document.getElementById('overallStatus');
+    const overallDescription = document.getElementById('overallDescription');
+    const regenerarBtn = document.getElementById('regenerarBtn');
+    
+    const esValidoGeneral = pruebaMedia.esValido && pruebaVarianza.esValido && pruebaCorrelacion.esValido;
+    
+    if (overallStatus) {
+        overallStatus.textContent = esValidoGeneral ? "VÁLIDO" : "NO VÁLIDO";
+        overallStatus.className = `overall-status ${esValidoGeneral ? 'valid' : 'invalid'}`;
+    }
+    
+    if (overallDescription) {
+        overallDescription.textContent = esValidoGeneral
+            ? "Los números generados cumplen con todas las pruebas de validación."
+            : "Los números generados NO cumplen con una o más pruebas de validación.";
+    }
+    
+    // Mostrar botón de regenerar si no es válido
+    if (regenerarBtn) {
+        if (!esValidoGeneral) {
+            regenerarBtn.classList.remove('hidden');
+        } else {
+            regenerarBtn.classList.add('hidden');
+        }
+    }
+}
+
+function regenerarNumeros() {
+    console.log('🔄 Regenerando números con mismos parámetros');
+    
+    // Usar los mismos parámetros pero con una semilla diferente
+    const { a, c, m, n } = currentParams;
+    
+    // Generar nueva semilla basada en el tiempo actual
+    const nuevaSemilla = Math.floor(Date.now() % m);
+    
+    // Actualizar campo de semilla
+    const x0Input = document.getElementById("x0");
+    if (x0Input) {
+        x0Input.value = nuevaSemilla;
+    }
+    
+    // Generar números con nueva semilla
+    generarLCG();
+}
+
 function reiniciar() {
     console.log('🔄 Reiniciando aplicación');
     
     try {
         const outputSection = document.getElementById('outputSection');
         const chartSection = document.getElementById('chartSection');
+        const validationSection = document.getElementById('validationSection');
         const output = document.getElementById('output');
+        const regenerarBtn = document.getElementById('regenerarBtn');
         
         if (outputSection) outputSection.classList.add('hidden');
         if (chartSection) chartSection.classList.add('hidden');
+        if (validationSection) validationSection.classList.add('hidden');
         if (output) output.innerHTML = '';
+        if (regenerarBtn) regenerarBtn.classList.add('hidden');
         
         // Destruir gráfico si existe
         if (chart) {
@@ -548,3 +784,5 @@ function reiniciar() {
         mostrarMensaje("❌ Error al reiniciar la aplicación", "error");
     }
 }
+
+
