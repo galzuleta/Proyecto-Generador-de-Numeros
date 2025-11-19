@@ -2,11 +2,17 @@ let chart = null;
 let currentResults = [];
 let currentParams = {};
 
+// Valores por defecto
+const defaultValues = {
+    a: 19,
+    c: 33,
+    x0: 37,
+    n: 100,
+    nivelAceptacion: 95
+};
 
 // Inicializar la aplicación
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Aplicación LCG iniciada');
-    
     // Configurar campo m como solo lectura y cambiar texto de ayuda
     const mInput = document.getElementById("m");
     const mHelpText = document.querySelector('.form-group:nth-child(3) .help-text');
@@ -30,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Agregar validación en tiempo real para evitar decimales
     document.querySelectorAll('#formLCG input').forEach(input => {
-        if (input.id !== 'm') { // No validar m ya que es solo lectura
+        if (input.id !== 'm' && input.id !== 'nivelAceptacion') {
             input.addEventListener('input', function(e) {
                 // Prevenir decimales
                 if (this.value.includes('.')) {
@@ -54,6 +60,19 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
+    
+    // Validación especial para nivel de aceptación
+    const nivelAceptacionInput = document.getElementById('nivelAceptacion');
+    if (nivelAceptacionInput) {
+        nivelAceptacionInput.addEventListener('input', function(e) {
+            const valor = parseFloat(this.value);
+            if (isNaN(valor) || valor <= 0 || valor >= 100) {
+                this.style.borderColor = '#e63946';
+            } else {
+                this.style.borderColor = '#4cc9f0';
+            }
+        });
+    }
     
     // Soporte para Enter
     document.getElementById('formLCG').addEventListener('keypress', function(e) {
@@ -87,14 +106,10 @@ function actualizarModuloDesdeN() {
         if (mLabel) {
             mLabel.innerHTML = `Módulo (m = 2<sup>${g}</sup>):`;
         }
-        
-        console.log(`📊 N=${n} → m=2^${g}=${m}`);
     }
 }
 
 function reiniciarValores() {
-    console.log('🔄 Restableciendo valores por defecto');
-    
     try {
         // Restablecer valores por defecto de forma segura
         const aInput = document.getElementById("a");
@@ -102,12 +117,14 @@ function reiniciarValores() {
         const mInput = document.getElementById("m");
         const x0Input = document.getElementById("x0");
         const nInput = document.getElementById("n");
+        const nivelAceptacionInput = document.getElementById("nivelAceptacion");
         
         // Verificar que los elementos existen antes de asignar valores
         if (aInput) aInput.value = defaultValues.a;
         if (cInput) cInput.value = defaultValues.c;
         if (x0Input) x0Input.value = defaultValues.x0;
         if (nInput) nInput.value = defaultValues.n;
+        if (nivelAceptacionInput) nivelAceptacionInput.value = defaultValues.nivelAceptacion;
         
         // Calcular m automáticamente desde n
         actualizarModuloDesdeN();
@@ -119,15 +136,14 @@ function reiniciarValores() {
             }
         });
         
-        console.log('✅ Valores restablecidos correctamente');
     } catch (error) {
-        console.error('❌ Error en reiniciarValores:', error);
+        mostrarMensaje("❌ Error al reiniciar valores", "error");
     }
 }
 
 function validarCampoEnTiempoReal(e) {
     const input = e.target;
-    if (!input || input.id === 'm') return; // No validar m
+    if (!input || input.id === 'm' || input.id === 'nivelAceptacion') return;
     
     const value = input.value;
     
@@ -164,7 +180,6 @@ function validarCampoEspecifico(id, valor) {
         case 'x0':
             return !isNaN(m) && valor >= 0 && valor < m;
         case 'n':
-            // Mínimo 99 números
             return valor >= 99;
         default:
             return true;
@@ -201,26 +216,35 @@ function mostrarLoading(mostrar) {
 }
 
 function generarLCG() {
-    console.log('🎲 Iniciando generación LCG');
-    
     // Obtener elementos de forma segura
     const aInput = document.getElementById("a");
     const cInput = document.getElementById("c");
     const mInput = document.getElementById("m");
     const x0Input = document.getElementById("x0");
     const nInput = document.getElementById("n");
+    const nivelAceptacionInput = document.getElementById("nivelAceptacion");
     
-    if (!aInput || !cInput || !mInput || !x0Input || !nInput) {
+    if (!aInput || !cInput || !mInput || !x0Input || !nInput || !nivelAceptacionInput) {
         mostrarMensaje("❌ Error: No se pudieron encontrar los campos del formulario", "error");
         return;
     }
     
-    // Obtener valores y asegurarse de que sean enteros
+    // Obtener valores
     const a = parseInt(aInput.value);
     const c = parseInt(cInput.value);
     const m = parseInt(mInput.value);
     const x0 = parseInt(x0Input.value);
     const n = parseInt(nInput.value);
+    const nivelAceptacion = parseFloat(nivelAceptacionInput.value);
+
+    // Validar nivel de aceptación
+    if (isNaN(nivelAceptacion) || nivelAceptacion <= 0 || nivelAceptacion >= 100) {
+        mostrarMensaje("⚠️ El nivel de aceptación debe ser mayor que 0% y menor que 100%", "error");
+        return;
+    }
+
+    // Calcular alpha = (100 - nivelAceptacion) / 100
+    const alpha = (100 - nivelAceptacion) / 100;
 
     // 🔍 Validaciones - Solo enteros
     if ([a, c, m, x0, n].some(v => isNaN(v))) {
@@ -261,12 +285,8 @@ function generarLCG() {
         if (!confirmar) return;
     }
 
-    // Mostrar información del módulo calculado
-    const g = Math.log2(m);
-    console.log(`📐 Parámetros: N=${n}, m=2^${g.toFixed(2)}=${m}`);
-
     // Guardar parámetros actuales para regeneración
-    currentParams = { a, c, m, x0, n };
+    currentParams = { a, c, m, x0, n, nivelAceptacion };
 
     // Mostrar estado de carga
     mostrarLoading(true);
@@ -290,18 +310,16 @@ function generarLCG() {
             // Calcular período
             const periodo = calcularPeriodo(a, c, m, x0);
 
-            mostrarResultados(resultados, periodo, m);
+            mostrarResultados(resultados, periodo, m, nivelAceptacion, alpha);
             graficar(resultados);
             
             // Ejecutar pruebas de validación
-            ejecutarPruebasValidacion(resultados);
+            ejecutarPruebasValidacion(resultados, nivelAceptacion, alpha);
             
             // Mostrar mensaje de éxito con información del módulo
-            const g = Math.log2(m);
-            mostrarMensaje(`✅ Se generaron ${n} números usando m=2^${Math.round(g)}=${m}`, "success");
+            mostrarMensaje(`✅ Se generaron ${n} números con ${nivelAceptacion}% de confianza (α=${alpha.toFixed(4)})`, "success");
             
         } catch (error) {
-            console.error('Error en generación LCG:', error);
             mostrarMensaje("❌ Error al generar números aleatorios", "error");
         } finally {
             // Restaurar botón
@@ -325,14 +343,14 @@ function calcularPeriodo(a, c, m, x0) {
     return valoresVistos.size;
 }
 
-function mostrarResultados(resultados, periodo, m) {
+function mostrarResultados(resultados, periodo, m, nivelAceptacion, alpha) {
     const contenedor = document.getElementById("output");
     const outputSection = document.getElementById("outputSection");
     const chartSection = document.getElementById("chartSection");
     const validationSection = document.getElementById("validationSection");
 
     if (!contenedor || !outputSection || !chartSection || !validationSection) {
-        console.error('❌ No se encontraron elementos de resultados');
+        mostrarMensaje("❌ Error: No se encontraron elementos de resultados", "error");
         return;
     }
 
@@ -356,21 +374,25 @@ function mostrarResultados(resultados, periodo, m) {
     if (totalNumbers) totalNumbers.textContent = resultados.length;
     if (periodoLength) periodoLength.textContent = periodo;
 
-    // Mostrar información del módulo usado
+    // Mostrar información del módulo usado y nivel de aceptación
     const g = Math.log2(m);
     const moduloInfo = document.createElement('div');
     moduloInfo.className = 'modulo-info';
     moduloInfo.innerHTML = `
         <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; border-left: 4px solid #4361ee;">
             <strong>📐 Configuración Automática:</strong><br>
-            <span style="font-size: 1.1em;">N = ${resultados.length} → m = 2<sup>${Math.round(g)}</sup> = ${m}</span>
+            <span style="font-size: 1.1em;">N = ${resultados.length} → m = 2<sup>${Math.round(g)}</sup> = ${m}</span><br>
+            <span style="font-size: 1em; color: #4361ee;">
+                Nivel de aceptación: <strong>${nivelAceptacion}%</strong> → 
+                α = (100 - ${nivelAceptacion})/100 = <strong>${alpha.toFixed(4)}</strong>
+            </span>
         </div>
     `;
 
     // Generar tabla con scroll para muchos números
     let html = `
         <div class="table-info">
-            <p>Mostrando ${resultados.length} números generados</p>
+            <p>Mostrando ${resultados.length} números generados con ${nivelAceptacion}% de confianza (α=${alpha.toFixed(4)})</p>
         </div>
         <table>
             <thead>
@@ -404,7 +426,6 @@ function mostrarResultados(resultados, periodo, m) {
 function graficar(resultados) {
     const chartCanvas = document.getElementById("chart");
     if (!chartCanvas) {
-        console.error('❌ No se encontró el elemento canvas del gráfico');
         return;
     }
     
@@ -535,35 +556,33 @@ function graficar(resultados) {
 
 // ===== PRUEBAS DE VALIDACIÓN ESPECÍFICAS =====
 
-function ejecutarPruebasValidacion(resultados) {
-    console.log('🧪 Ejecutando pruebas de validación específicas');
-    
+function ejecutarPruebasValidacion(resultados, nivelAceptacion, alpha) {
     // Obtener solo los valores U (números aleatorios)
     const valoresU = resultados.map(r => parseFloat(r.U));
     const n = valoresU.length;
     
     // Ejecutar pruebas específicas
-    const pruebaMedia = pruebaUniformidadMedia(valoresU, n);
-    const pruebaVarianza = pruebaUniformidadVarianza(valoresU, n);
-    const pruebaCorrelacion = pruebaIndependenciaCorrelacion(valoresU, n);
+    const pruebaMedia = pruebaUniformidadMedia(valoresU, n, nivelAceptacion, alpha);
+    const pruebaVarianza = pruebaUniformidadVarianza(valoresU, n, nivelAceptacion, alpha);
+    const pruebaChiCuadrado = pruebaUniformidadChiCuadrado(valoresU, n, nivelAceptacion, alpha);
+    const pruebaCorridas = pruebaIndependenciaCorridas(valoresU, n, nivelAceptacion, alpha);
     
     // Mostrar resultados
-    mostrarResultadosValidacionEspecificos(pruebaMedia, pruebaVarianza, pruebaCorrelacion);
+    mostrarResultadosValidacionEspecificos(pruebaMedia, pruebaVarianza, pruebaChiCuadrado, pruebaCorridas, nivelAceptacion, alpha);
 }
 
-function pruebaUniformidadMedia(valoresU, n) {
+function pruebaUniformidadMedia(valoresU, n, nivelAceptacion, alpha) {
     // Calcular media
     const media = valoresU.reduce((sum, val) => sum + val, 0) / n;
     
-    // Límites para la media con α=0.05
-    // Para una distribución uniforme U(0,1), la media teórica es 0.5
-    // El intervalo de confianza al 95% es: 0.5 ± Z_(1-α/2) * σ/√n
-    const z = 1.96; // Valor Z para α=0.05
-    const sigma = 1 / Math.sqrt(12); // Desviación estándar teórica de U(0,1)
-    const margenError = z * sigma / Math.sqrt(n);
+    // FÓRMULAS EXACTAS DE LA IMAGEN:
+    // LI = 1/2 - z_(α/2) * (1/√(12n))
+    // LS = 1/2 + z_(α/2) * (1/√(12n))
+    const z_alpha_2 = calcularZScoreInverso(1 - alpha/2);
+    const termino = z_alpha_2 * (1 / Math.sqrt(12 * n));
     
-    const limiteInferior = 0.5 - margenError;
-    const limiteSuperior = 0.5 + margenError;
+    const limiteInferior = 0.5 - termino;
+    const limiteSuperior = 0.5 + termino;
     
     const esValido = media >= limiteInferior && media <= limiteSuperior;
     
@@ -576,20 +595,21 @@ function pruebaUniformidadMedia(valoresU, n) {
     };
 }
 
-function pruebaUniformidadVarianza(valoresU, n) {
+function pruebaUniformidadVarianza(valoresU, n, nivelAceptacion, alpha) {
     // Calcular varianza muestral
     const media = valoresU.reduce((sum, val) => sum + val, 0) / n;
     const varianza = valoresU.reduce((sum, val) => sum + Math.pow(val - media, 2), 0) / (n - 1);
     
-    // Límites para la varianza con α=0.05
-    // Para una distribución uniforme U(0,1), la varianza teórica es 1/12 ≈ 0.08333
-    // Usamos distribución chi-cuadrado para el intervalo de confianza
-    const varianzaTeorica = 1/12;
-    const chi2Inferior = 77.046; // χ²(0.025, n-1) para n=100
-    const chi2Superior = 123.225; // χ²(0.975, n-1) para n=100
+    const gl = n - 1;
     
-    const limiteInferior = (n - 1) * varianzaTeorica / chi2Superior;
-    const limiteSuperior = (n - 1) * varianzaTeorica / chi2Inferior;
+    // FÓRMULAS EXACTAS:
+    // LS = χ²(α/2, n-1) / [12(n-1)]
+    // LI = χ²((1-α)/2, n-1) / [12(n-1)]
+    const chi2_alpha_2 = calcularChiCuadrado(alpha/2, gl);
+    const chi2_1_alpha_2 = calcularChiCuadrado(1 - alpha/2, gl);
+    
+    const limiteSuperior = chi2_alpha_2 / (12 * gl);
+    const limiteInferior = chi2_1_alpha_2 / (12 * gl);
     
     const esValido = varianza >= limiteInferior && varianza <= limiteSuperior;
     
@@ -598,45 +618,124 @@ function pruebaUniformidadVarianza(valoresU, n) {
         valorCalculado: varianza,
         limiteInferior: limiteInferior,
         limiteSuperior: limiteSuperior,
-        esValido: esValido
+        esValido: esValido,
+        alpha: alpha
     };
 }
 
-function pruebaIndependenciaCorrelacion(valoresU, n) {
-    // Prueba de correlación serial (lag-1)
-    let sumaProductos = 0;
+function pruebaUniformidadChiCuadrado(valoresU, n, nivelAceptacion, alpha) {
+    // 1. Dividir el intervalo (0,1) en m sub-intervalos
+    const m = Math.floor(Math.sqrt(n)); // m = √n
     
-    for (let i = 0; i < n - 1; i++) {
-        sumaProductos += valoresU[i] * valoresU[i + 1];
+    // 2. Clasificar cada número en los m intervalos
+    const frecuenciasObservadas = new Array(m).fill(0);
+    
+    valoresU.forEach(valor => {
+        const intervalo = Math.floor(valor * m);
+        const indice = Math.min(intervalo, m - 1);
+        frecuenciasObservadas[indice]++;
+    });
+    
+    // 3. Calcular frecuencia esperada E_i = n/m
+    const frecuenciaEsperada = n / m;
+    
+    // 4. Calcular estadístico chi-cuadrado: x₀² = Σ[(E_i - O_i)² / E_i]
+    let chiCuadradoCalculado = 0;
+    for (let i = 0; i < m; i++) {
+        const termino = Math.pow(frecuenciaEsperada - frecuenciasObservadas[i], 2) / frecuenciaEsperada;
+        chiCuadradoCalculado += termino;
     }
     
-    // Calcular coeficiente de correlación
-    const media = valoresU.reduce((sum, val) => sum + val, 0) / n;
-    const varianza = valoresU.reduce((sum, val) => sum + Math.pow(val - media, 2), 0) / (n - 1);
+    // 5. Obtener valor crítico de chi-cuadrado: χ²(α, m-1)
+    const gradosLibertad = m - 1;
+    const chiCuadradoCritico = calcularChiCuadrado(alpha, gradosLibertad);
     
-    const covarianza = (sumaProductos / (n - 1)) - Math.pow(media, 2);
-    const correlacion = covarianza / varianza;
-    
-    // Límites para correlación con α=0.05
-    // Bajo independencia, el coeficiente de correlación debería estar cerca de 0
-    const z = 1.96; // Valor Z para α=0.05
-    const limite = z / Math.sqrt(n);
-    
-    const limiteInferior = -limite;
-    const limiteSuperior = limite;
-    
-    const esValido = correlacion >= limiteInferior && correlacion <= limiteSuperior;
+    // 6. Decisión: Si x₀² < χ²(α, m-1) → NO RECHAZAR uniformidad
+    const esValido = chiCuadradoCalculado < chiCuadradoCritico;
     
     return {
-        nombre: "Independencia - Correlación",
-        valorCalculado: correlacion,
-        limiteInferior: limiteInferior,
-        limiteSuperior: limiteSuperior,
-        esValido: esValido
+        nombre: "Uniformidad - Chi Cuadrado",
+        valorCalculado: chiCuadradoCalculado,
+        limiteInferior: 0,
+        limiteSuperior: chiCuadradoCritico,
+        esValido: esValido,
+        gradosLibertad: gradosLibertad,
+        m: m
     };
 }
 
-function mostrarResultadosValidacionEspecificos(pruebaMedia, pruebaVarianza, pruebaCorrelacion) {
+function pruebaIndependenciaCorridas(valoresU, n, nivelAceptacion, alpha) {
+    // 1. Generar secuencia de unos y ceros (1 si r_i > r_{i-1}, 0 si r_i < r_{i-1})
+    const secuencia = [];
+    for (let i = 1; i < n; i++) {
+        secuencia.push(valoresU[i] > valoresU[i-1] ? 1 : 0);
+    }
+    
+    // 2. Contar número de corridas (grupos consecutivos de unos o ceros)
+    let corridasObservadas = 1;
+    for (let i = 1; i < secuencia.length; i++) {
+        if (secuencia[i] !== secuencia[i-1]) {
+            corridasObservadas++;
+        }
+    }
+    
+    // 3. Calcular valores esperados
+    const mu_C0 = (2 * n - 1) / 3;
+    const sigma2_C0 = (16 * n - 29) / 90;
+    const sigma_C0 = Math.sqrt(sigma2_C0);
+    
+    // 4. Calcular estadístico Z0
+    const Z0 = Math.abs((corridasObservadas - mu_C0) / sigma_C0);
+    
+    // 5. Obtener valor crítico Z_(α/2)
+    const Z_alpha_2 = calcularZScoreInverso(1 - alpha/2);
+    
+    // 6. Decisión: Si Z0 < Z_(α/2) → NO RECHAZAR independencia
+    const esValido = Z0 < Z_alpha_2;
+    
+    return {
+        nombre: "Independencia - Corridas",
+        valorCalculado: Z0,
+        limiteInferior: 0,
+        limiteSuperior: Z_alpha_2,
+        esValido: esValido,
+        corridasObservadas: corridasObservadas,
+        mediaEsperada: mu_C0
+    };
+}
+
+// Función para calcular chi-cuadrado crítico
+function calcularChiCuadrado(alpha, gradosLibertad) {
+    const gl = gradosLibertad;
+    const z = calcularZScoreInverso(1 - alpha);
+    
+    const h = 1 - (2 / (9 * gl));
+    const term = h + z * Math.sqrt(2 / (9 * gl));
+    
+    return gl * Math.pow(term, 3);
+}
+
+// Función precisa para Z-score inverso
+function calcularZScoreInverso(p) {
+    if (p <= 0 || p >= 1) return 0;
+    
+    if (p < 0.02425) {
+        const q = Math.sqrt(-2 * Math.log(p));
+        return -((((2.50662823884 * q + -30.6647980661) * q + 138.357751867) * q + -275.928510473) * q + 220.946098424) / 
+               ((((q + -13.280700552) * q + 66.801311887) * q + -155.69897986) * q + 161.585836858);
+    } else if (p > 0.97575) {
+        const q = Math.sqrt(-2 * Math.log(1 - p));
+        return ((((2.50662823884 * q + -30.6647980661) * q + 138.357751867) * q + -275.928510473) * q + 220.946098424) / 
+               ((((q + -13.280700552) * q + 66.801311887) * q + -155.69897986) * q + 161.585836858);
+    } else {
+        const q = p - 0.5;
+        const r = q * q;
+        return (((((-3.969683028665376e1 * r + 2.209460984245205e2) * r + -2.759285104469687e2) * r + 1.383577518672690e2) * r + -3.066479806614716e1) * r + 2.506628277459239) * q /
+               (((((-5.447609879822406e1 * r + 1.615858368580409e2) * r + -1.556989798598866e2) * r + 6.680131188771972e1) * r + -1.328068155288572e1) * r + 1);
+    }
+}
+
+function mostrarResultadosValidacionEspecificos(pruebaMedia, pruebaVarianza, pruebaChiCuadrado, pruebaCorridas, nivelAceptacion, alpha) {
     // Actualizar prueba de media
     const mediaStatus = document.getElementById('mediaStatus');
     const mediaDescription = document.getElementById('mediaDescription');
@@ -650,9 +749,9 @@ function mostrarResultadosValidacionEspecificos(pruebaMedia, pruebaVarianza, pru
     }
     
     if (mediaDescription) {
-        mediaDescription.textContent = pruebaMedia.esValido 
+        mediaDescription.textContent = `Nivel de confianza: ${nivelAceptacion}% (α=${alpha.toFixed(4)}) - ${pruebaMedia.esValido 
             ? "La media está dentro del intervalo de confianza esperado."
-            : "La media está fuera del intervalo de confianza esperado.";
+            : "La media está fuera del intervalo de confianza esperado."}`;
     }
     
     if (mediaValor) mediaValor.textContent = pruebaMedia.valorCalculado.toFixed(4);
@@ -672,43 +771,61 @@ function mostrarResultadosValidacionEspecificos(pruebaMedia, pruebaVarianza, pru
     }
     
     if (varianzaDescription) {
-        varianzaDescription.textContent = pruebaVarianza.esValido
+        varianzaDescription.textContent = `Nivel de confianza: ${nivelAceptacion}% (α=${alpha.toFixed(4)}) - ${pruebaVarianza.esValido
             ? "La varianza está dentro del intervalo de confianza esperado."
-            : "La varianza está fuera del intervalo de confianza esperado.";
+            : "La varianza está fuera del intervalo de confianza esperado."}`;
     }
     
     if (varianzaValor) varianzaValor.textContent = pruebaVarianza.valorCalculado.toFixed(4);
     if (varanzaLimiteInf) varanzaLimiteInf.textContent = pruebaVarianza.limiteInferior.toFixed(4);
     if (varanzaLimiteSup) varanzaLimiteSup.textContent = pruebaVarianza.limiteSuperior.toFixed(4);
     
-    // Actualizar prueba de correlación
-    const correlacionStatus = document.getElementById('correlacionStatus');
-    const correlacionDescription = document.getElementById('correlacionDescription');
-    const correlacionValor = document.getElementById('correlacionValor');
-    const correlacionLimiteInf = document.getElementById('correlacionLimiteInf');
-    const correlacionLimiteSup = document.getElementById('correlacionLimiteSup');
+    // Actualizar prueba de chi-cuadrado
+    const chiStatus = document.getElementById('chiStatus');
+    const chiDescription = document.getElementById('chiDescription');
+    const chiValor = document.getElementById('chiValor');
+    const chiLimiteSup = document.getElementById('chiLimiteSup');
     
-    if (correlacionStatus) {
-        correlacionStatus.textContent = pruebaCorrelacion.esValido ? "✅ APRUEBA" : "❌ NO APRUEBA";
-        correlacionStatus.className = `validation-status ${pruebaCorrelacion.esValido ? 'pass' : 'fail'}`;
+    if (chiStatus) {
+        chiStatus.textContent = pruebaChiCuadrado.esValido ? "✅ APRUEBA" : "❌ NO APRUEBA";
+        chiStatus.className = `validation-status ${pruebaChiCuadrado.esValido ? 'pass' : 'fail'}`;
     }
     
-    if (correlacionDescription) {
-        correlacionDescription.textContent = pruebaCorrelacion.esValido
-            ? "La correlación está dentro del intervalo de confianza esperado."
-            : "La correlación está fuera del intervalo de confianza esperado.";
+    if (chiDescription) {
+        chiDescription.textContent = `Nivel de confianza: ${nivelAceptacion}% (α=${alpha.toFixed(4)}) - ${pruebaChiCuadrado.esValido
+            ? "Los números siguen una distribución uniforme (Chi-cuadrado)."
+            : "Los números NO siguen una distribución uniforme (Chi-cuadrado)."}`;
     }
     
-    if (correlacionValor) correlacionValor.textContent = pruebaCorrelacion.valorCalculado.toFixed(4);
-    if (correlacionLimiteInf) correlacionLimiteInf.textContent = pruebaCorrelacion.limiteInferior.toFixed(4);
-    if (correlacionLimiteSup) correlacionLimiteSup.textContent = pruebaCorrelacion.limiteSuperior.toFixed(4);
+    if (chiValor) chiValor.textContent = pruebaChiCuadrado.valorCalculado.toFixed(4);
+    if (chiLimiteSup) chiLimiteSup.textContent = pruebaChiCuadrado.limiteSuperior.toFixed(4);
+    
+    // Actualizar prueba de corridas
+    const corridasStatus = document.getElementById('corridasStatus');
+    const corridasDescription = document.getElementById('corridasDescription');
+    const corridasValor = document.getElementById('corridasValor');
+    const corridasLimiteSup = document.getElementById('corridasLimiteSup');
+    
+    if (corridasStatus) {
+        corridasStatus.textContent = pruebaCorridas.esValido ? "✅ APRUEBA" : "❌ NO APRUEBA";
+        corridasStatus.className = `validation-status ${pruebaCorridas.esValido ? 'pass' : 'fail'}`;
+    }
+    
+    if (corridasDescription) {
+        corridasDescription.textContent = `Nivel de confianza: ${nivelAceptacion}% (α=${alpha.toFixed(4)}) - ${pruebaCorridas.esValido
+            ? "Los números son independientes (prueba de corridas)."
+            : "Los números NO son independientes (prueba de corridas)."}`;
+    }
+    
+    if (corridasValor) corridasValor.textContent = pruebaCorridas.valorCalculado.toFixed(4);
+    if (corridasLimiteSup) corridasLimiteSup.textContent = pruebaCorridas.limiteSuperior.toFixed(4);
     
     // Actualizar estado general
     const overallStatus = document.getElementById('overallStatus');
     const overallDescription = document.getElementById('overallDescription');
     const regenerarBtn = document.getElementById('regenerarBtn');
     
-    const esValidoGeneral = pruebaMedia.esValido && pruebaVarianza.esValido && pruebaCorrelacion.esValido;
+    const esValidoGeneral = pruebaMedia.esValido && pruebaVarianza.esValido && pruebaChiCuadrado.esValido && pruebaCorridas.esValido;
     
     if (overallStatus) {
         overallStatus.textContent = esValidoGeneral ? "VÁLIDO" : "NO VÁLIDO";
@@ -717,8 +834,14 @@ function mostrarResultadosValidacionEspecificos(pruebaMedia, pruebaVarianza, pru
     
     if (overallDescription) {
         overallDescription.textContent = esValidoGeneral
-            ? "Los números generados cumplen con todas las pruebas de validación."
-            : "Los números generados NO cumplen con una o más pruebas de validación.";
+            ? `Los números generados cumplen con todas las pruebas de validación al ${nivelAceptacion}% de confianza.`
+            : `Los números generados NO cumplen con una o más pruebas de validación al ${nivelAceptacion}% de confianza.`;
+    }
+
+    // Para Corridas - Corridas observadas
+    const corridasObservadas = document.getElementById('corridasObservadas');
+    if (corridasObservadas && pruebaCorridas.corridasObservadas) {
+        corridasObservadas.textContent = pruebaCorridas.corridasObservadas;
     }
     
     // Mostrar botón de regenerar si no es válido
@@ -732,10 +855,8 @@ function mostrarResultadosValidacionEspecificos(pruebaMedia, pruebaVarianza, pru
 }
 
 function regenerarNumeros() {
-    console.log('🔄 Regenerando números con mismos parámetros');
-    
     // Usar los mismos parámetros pero con una semilla diferente
-    const { a, c, m, n } = currentParams;
+    const { a, c, m, n, nivelAceptacion } = currentParams;
     
     // Generar nueva semilla basada en el tiempo actual
     const nuevaSemilla = Math.floor(Date.now() % m);
@@ -751,8 +872,6 @@ function regenerarNumeros() {
 }
 
 function reiniciar() {
-    console.log('🔄 Reiniciando aplicación');
-    
     try {
         const outputSection = document.getElementById('outputSection');
         const chartSection = document.getElementById('chartSection');
@@ -772,17 +891,16 @@ function reiniciar() {
             chart = null;
         }
         
+        // Restablecer valores por defecto
+        reiniciarValores();
+        
         // Mostrar mensaje de reinicio
         mostrarMensaje("🔄 Formulario reiniciado correctamente", "success");
         
         // Ocultar mensaje después de 2 segundos
         setTimeout(ocultarMensaje, 2000);
         
-        console.log('✅ Aplicación reiniciada correctamente');
     } catch (error) {
-        console.error('❌ Error en reiniciar:', error);
         mostrarMensaje("❌ Error al reiniciar la aplicación", "error");
     }
 }
-
-

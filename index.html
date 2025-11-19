@@ -53,11 +53,18 @@
               <span class="help-text">0 ≤ X₀ < m</span>
             </div>
 
+            <div class="form-group ">
+              <label for="nivelAceptacion">Nivel de Aceptación (%):</label>
+              <input type="number" id="nivelAceptacion" required min="1" max="99.9" step="0.1" value="95">
+              <span class="help-text">Porcentaje de confianza (1% - 99.9%)</span>
+            </div>
+
             <div class="form-group full-width">
               <label for="n">Cantidad de números (n):</label>
               <input type="number" id="n" required min="1">
-              <span class="help-text">Entero positivo</span>
+              <span class="help-text">Entero positivo (mínimo 99)</span>
             </div>
+            
           </div>
 
           <div id="mensajes" class="mensajes"></div>
@@ -87,7 +94,7 @@
         <div id="output" class="table-container"></div>
       </section>
 
-      <!-- NUEVA SECCIÓN: Pruebas de Validación -->
+      <!-- SECCIÓN: Pruebas de Validación -->
       <section id="validationSection" class="validation-section hidden">
           <h2>🧪 Pruebas de Validación</h2>
           
@@ -142,27 +149,48 @@
                   </div>
               </div>
 
-              <!-- Prueba de Independencia - Correlación -->
+              <!-- Prueba de Uniformidad - Chi Cuadrado -->
               <div class="validation-item">
                   <div class="validation-header">
-                      <h3>🔗 Prueba de Independencia - Correlación</h3>
-                      <span id="correlacionStatus" class="validation-status">Pendiente</span>
+                      <h3>📊 Prueba de Uniformidad - Chi Cuadrado</h3>
+                      <span id="chiStatus" class="validation-status">Pendiente</span>
                   </div>
-                  <p id="correlacionDescription" class="validation-description">
-                      Verifica que no exista correlación significativa entre números consecutivos.
+                  <p id="chiDescription" class="validation-description">
+                      Verifica si los números siguen una distribución uniforme usando la prueba Chi-cuadrado.
                   </p>
                   <div class="validation-details">
                       <div class="validation-metric">
-                          <span class="metric-label">Valor calculado:</span>
-                          <span id="correlacionValor" class="metric-value">-</span>
+                          <span class="metric-label">Valor calculado (χ²):</span>
+                          <span id="chiValor" class="metric-value">-</span>
                       </div>
                       <div class="validation-metric">
-                          <span class="metric-label">Límite inferior:</span>
-                          <span id="correlacionLimiteInf" class="metric-value">-</span>
+                          <span class="metric-label">Límite crítico:</span>
+                          <span id="chiLimiteSup" class="metric-value">-</span>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Prueba de Independencia - Corridas Arriba/Abajo -->
+              <div class="validation-item">
+                  <div class="validation-header">
+                      <h3>🔄 Prueba de Independencia - Corridas</h3>
+                      <span id="corridasStatus" class="validation-status">Pendiente</span>
+                  </div>
+                  <p id="corridasDescription" class="validation-description">
+                      Verifica la independencia de los números usando la prueba de corridas arriba y abajo.
+                  </p>
+                  <div class="validation-details">
+                      <div class="validation-metric">
+                          <span class="metric-label">Estadístico Z₀:</span>
+                          <span id="corridasValor" class="metric-value">-</span>
                       </div>
                       <div class="validation-metric">
-                          <span class="metric-label">Límite superior:</span>
-                          <span id="correlacionLimiteSup" class="metric-value">-</span>
+                          <span class="metric-label">Límite crítico:</span>
+                          <span id="corridasLimiteSup" class="metric-value">-</span>
+                      </div>
+                      <div class="validation-metric">
+                          <span class="metric-label">Corridas observadas:</span>
+                          <span id="corridasObservadas" class="metric-value">-</span>
                       </div>
                   </div>
               </div>
